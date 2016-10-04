@@ -4,12 +4,15 @@
 #define MAX_RECORDS 1000
 #define MAX_INPUT 40
 
+void E(char *in1, char *in2, char *in3);
+void hasher();
 void writeFile();
 int inputPass(int i, int newpasswrd);
 void inputID();
 void userInput();
 void printDB();
 void readFile();
+void hInit();
 void inputInit();
 void DBInit();
 void init();
@@ -21,6 +24,16 @@ char **passwordArray;
 
 char *IDInput;
 char *passInput;
+
+char *h1In;
+char *h2In;
+char *h3In;
+
+char *h1Out;
+char *h2Out;
+char *h3Out;
+
+int n;
 
 int main()
 {
@@ -34,6 +47,43 @@ int main()
     printDB();
 
     return 0;
+}
+
+void E(char *in1, char *in2, char *in3)
+{
+    h1Out[0] = (in1[0] & 0x80) ^ (((in1[0] >> 1) & 0x7F) ^ ((in1[0]) & 0x7F));
+    h1Out[1] = ((in1[1] & 0x80) ^ ((in1[0] << 7) & 0x80)) ^ (((in1[1] >> 1) & 0x7F) ^ ((in1[1]) & 0x7F));
+    h1Out[2] = ((in1[2] & 0x80) ^ ((in1[1] << 7) & 0x80)) ^ (((in1[2] >> 1) & 0x7F) ^ ((in1[2]) & 0x7F));
+    h1Out[3] = ((in1[3] & 0x80) ^ ((in1[2] << 7) & 0x80)) ^ (((in1[3] >> 1) & 0x7F) ^ ((in1[3]) & 0x7F));
+
+    h2Out[0] = (in2[0] & 0x80) ^ (((in2[0] >> 1) & 0x7F) ^ ((in2[0]) & 0x7F));
+    h2Out[1] = ((in2[1] & 0x80) ^ ((in2[0] << 7) & 0x80)) ^ (((in2[1] >> 1) & 0x7F) ^ ((in2[1]) & 0x7F));
+    h2Out[2] = ((in2[2] & 0x80) ^ ((in2[1] << 7) & 0x80)) ^ (((in2[2] >> 1) & 0x7F) ^ ((in2[2]) & 0x7F));
+    h2Out[3] = ((in2[3] & 0x80) ^ ((in2[2] << 7) & 0x80)) ^ (((in2[3] >> 1) & 0x7F) ^ ((in2[3]) & 0x7F));
+
+    h3Out[0] = (in3[0] & 0x80) ^ (((in3[0] >> 1) & 0x7F) ^ ((in3[0]) & 0x7F));
+    h3Out[1] = ((in3[1] & 0x80) ^ ((in3[0] << 7) & 0x80)) ^ (((in3[1] >> 1) & 0x7F) ^ ((in3[1]) & 0x7F));
+    h3Out[2] = ((in3[2] & 0x80) ^ ((in3[1] << 7) & 0x80)) ^ (((in3[2] >> 1) & 0x7F) ^ ((in3[2]) & 0x7F));
+    h3Out[3] = ((in3[3] & 0x80) ^ ((in3[2] << 7) & 0x80)) ^ (((in3[3] >> 1) & 0x7F) ^ ((in3[3]) & 0x7F));
+
+    sprintf(passInput, "%s%s%s", h1Out, h2Out, h3Out);
+}
+
+void hasher()
+{
+    int i = 0;
+    while (passInput[i])
+    {
+        passInput[i] = toupper(passInput[i]);
+        i++;
+    }
+
+    memcpy(h1In, passInput, 4);
+    memcpy(h2In, passInput + 4, 4);
+    memcpy(h3In, passInput + 8, 4);
+
+    E(h1In, h2In, h3In);
+    //printf("\nh1Out: %s\nh2Out: %s\nh3Out: %s\n", h1Out, h2Out, h3Out);
 }
 
 void writeFile()
@@ -234,6 +284,7 @@ int inputPass(int i, int newpasswrd)
                 {
                     if (passwordArray[i][0] == '\0')
                     {
+                        hasher();
                         strncpy(passwordArray[i], passInput, 12);
                         break;
                     }
@@ -248,42 +299,38 @@ int inputPass(int i, int newpasswrd)
             {
                 if (passwordArray[record][0] == '\0') //If record is empty
                 {
+                    int j;
+                    for (j = strLength; j < 12; j++) //Pads password with "-"
+                    {
+                        passInput[j] = '-';
+                    }
+                    hasher();
                     strncpy(passwordArray[record], passInput, 12);
                     return 0;
                 }
                 else //If record not empty, compare
                 {
-                    int r;
-                    for (r = 0; r < 12; r++) //unpads for compairison
+                    int j;
+                    for (j = strLength; j < 12; j++) //Pads password with "-"
                     {
-                        if (passwordArray[record][r] == '-')
-                            passwordArray[record][r] = '\0';
+                        passInput[j] = '-';
                     }
-
+                    hasher();
                     if (strcmp(passInput, passwordArray[record]) == 0) //If match
                     {
                         printf("correct password\n");
-                        int j;
-                        for (j = strLength; j < 12; j++) //Pads password with "-"
-                        {
-                            passInput[j] = '-';
-                        }
+
                         strncpy(passwordArray[record], passInput, 12);
                         return 0;
                     }
                     else //If not match
                     {
-                        if (newpass == 0)
+                        if (newpass == 0) // If a match, and
                         {
-                            int j;
-                            for (j = strLength; j < 12; j++) //Pads password with "-"
-                            {
-                                passInput[j] = '-';
-                            }
                             strncpy(passwordArray[record], passInput, 12);
                             return 0;
                         }
-                        else if (newpass == 1)
+                        else if (newpass == 1) // If not a match
                         {
                             return 1;
                         }
@@ -344,24 +391,21 @@ void inputID()
                     if (strcmp(IDArray[i], IDInput) == 0) // If the same
                     {
                         printf("Match Found\n");
-                        int attempts = 4, cmpr;
-                        while (attempts > -1)
+                        n = 5;
+                        int cmpr;
+                        while (n > 0)
                         {
-                            printf("You have %d attempts \n", attempts + 1);
+                            printf("You have %d attempts \n", n );
                             cmpr = inputPass(i, 1);
-                            if (cmpr == 1 && attempts > 0) //wrong attempt, still has attempts
+                            if (cmpr == 1 && n > 0) //wrong attempt, still has n
                             {
-                                attempts--;
+                                n--;
                                 continue;
                             }
-                            else if (cmpr == 1 && attempts == 0) //failed 5 attempts
+
+                            else if (cmpr == 0 && n > 0)
                             {
-                                printf("failure, account will be erased");
-                                break;
-                            }
-                            else if (cmpr == 0 && attempts > 0)
-                            {
-                                printf("success!!\nTime for a new Password\n");
+                                printf("Success!!\nTime for a new Password\n");
                                 int test = 1;
                                 while (test == 1)
                                 {
@@ -369,6 +413,11 @@ void inputID()
                                 }
                                 break;
                             }
+                        }
+                        if (cmpr == 1 && n == 0) //failed 5 n
+                        {
+                            printf("Too many unseccessful attempts - your account is locked");
+                            break;
                         }
                         correct = 0;
                         break;
@@ -396,7 +445,7 @@ void inputID()
 
 void readFile()
 {
-    fp = fopen("Database_Table.txt", "r");
+    fp = fopen("Database_Table.txt", "a+");
 
     char line[MAX_INPUT];
     if (fp == NULL)
@@ -422,6 +471,16 @@ void readFile()
         }
     }
     fclose(fp);
+}
+
+void hInit()
+{
+    h1In = (char *)malloc(sizeof(char) * 4);
+    h2In = (char *)malloc(sizeof(char) * 4);
+    h3In = (char *)malloc(sizeof(char) * 4);
+    h1Out = (char *)malloc(sizeof(char) * 4);
+    h2Out = (char *)malloc(sizeof(char) * 4);
+    h3Out = (char *)malloc(sizeof(char) * 4);
 }
 
 void inputInit()
@@ -452,4 +511,5 @@ void init()
 {
     DBInit();
     inputInit();
+    hInit();
 }
